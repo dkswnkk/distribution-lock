@@ -28,16 +28,13 @@ class CouponServiceTest {
 
     @BeforeEach
     public void setup() {
-        redisTemplate.delete(giftService.getGiftCountKey(EventType.MBTI));
-        redisTemplate.delete(Objects.requireNonNull(redisTemplate.keys(giftService.getGiftKeyPrefix(EventType.MBTI) + "*")));
+        redisTemplate.delete(giftService.getGiftKeyPrefix(EventType.MBTI));
     }
 
     @AfterEach
     public void tearDown() {
-        redisTemplate.delete(giftService.getGiftCountKey(EventType.MBTI));
-        redisTemplate.delete(Objects.requireNonNull(redisTemplate.keys(giftService.getGiftKeyPrefix(EventType.MBTI) + "*")));
+        redisTemplate.delete(giftService.getGiftKeyPrefix(EventType.MBTI));
     }
-
 
     @Test
     @DisplayName("동시에 선물 발행시 최대 선물 수를 초과하지 않아야 함")
