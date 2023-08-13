@@ -14,14 +14,19 @@ public class GiftService {
     private final RedisTemplate<String, Object> redisTemplate;
 
     @DistributedLock(key = "#eventType.name()", waitTime = 5, leaseTime = 1)
-
     public void issueGiftForUser(String userId, EventType eventType, int count) {
-        if (hasReachedMaxGiftCount(eventType, count) || hasGiftForUser(userId, eventType)) {
-            return;
+        if (canIssueGift(userId, eventType, count)) {
+            issueGift(userId, eventType);
+            incrementGiftCount(eventType);
+            // kafka event 발행(기프티콘 전송)
+            // kafka event 발행(발행 로그 저장)
         }
-        issueGift(userId, eventType);
-        incrementGiftCount(eventType);
     }
+
+    private boolean canIssueGift(String userId, EventType eventType, int count) {
+        return !hasReachedMaxGiftCount(eventType, count) && !hasGiftForUser(userId, eventType);
+    }
+
 
     private boolean hasReachedMaxGiftCount(EventType eventType, int count) {
         Long currentGiftCount = getGiftCount(eventType);
