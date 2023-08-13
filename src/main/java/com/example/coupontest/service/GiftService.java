@@ -2,44 +2,54 @@ package com.example.coupontest.service;
 
 import com.example.coupontest.annotation.DistributedLock;
 import com.example.coupontest.enums.EventType;
+import com.example.coupontest.service.issuer.GiftIssuer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class GiftService {
+    private static final String GIFT_SUFFIX = ":gift:";
+    private static final Long TRUE = 1L;
+
     private final RedisTemplate<String, Object> redisTemplate;
 
     @DistributedLock(key = "#eventType.name()", waitTime = 5, leaseTime = 1)
-    public void issueGiftForUser(String userId, EventType eventType, int count) {
-        Long currentGiftCount = getGiftCount(eventType);
-
-        if (currentGiftCount >= count) {
-            log.info("Sorry, all gifts for {} have been claimed.", eventType);
+    public void issueGiftToUser(String userId, EventType eventType, int count, GiftIssuer giftIssuer) {
+        if (areAllGiftsClaimed(eventType, count)) {
+            log.info("{} 이벤트의 기프티콘 재고가 남아있지 않습니다.", eventType);
             return;
         }
 
-        Long added = redisTemplate.opsForSet().add(getGiftSetKey(eventType), userId);
-        if (Boolean.TRUE.equals(added)) {
-            log.info("Gift for {} issued to user {}.", eventType, userId);
-            issueGift(userId, eventType);
-        } else {
-            log.info("User {} already has a gift for {}.", userId, eventType);
+        issueGiftIfNotAlreadyReceived(userId, eventType, giftIssuer);
+    }
+
+    private boolean areAllGiftsClaimed(EventType eventType, int count) {
+        return getCurrentGiftCount(eventType) >= count;
+    }
+
+    private void issueGiftIfNotAlreadyReceived(String userId, EventType eventType, GiftIssuer giftIssuer) {
+        if (!TRUE.equals(registerUserToReceivedGifts(userId, eventType))) {
+            log.info("{} 이용자는 {} 이벤트의 기프티콘을 이미 전송받았습니다.", userId, eventType);
+            return;
         }
-    }
-    private void issueGift(String userId, EventType eventType) {
-        // TODO: 기프티콘 전송 로직
-        log.debug("Issuing the actual gift for user {} for event type {}.", userId, eventType);
+
+        log.info("{} 이벤트의 기프티콘이 {}에게 발행되었습니다.", eventType, userId);
+        giftIssuer.issueGiftToUser(userId, eventType);
     }
 
-    public Long getGiftCount(EventType eventType) {
-        return redisTemplate.opsForSet().size(getGiftSetKey(eventType));
+    private Long registerUserToReceivedGifts(String userId, EventType eventType) {
+        return redisTemplate.opsForSet().add(generateGiftSetKey(eventType), userId);
     }
 
-    public String getGiftSetKey(EventType eventType) {
-        return eventType.name().toLowerCase() + ":gift:";
+    public Long getCurrentGiftCount(EventType eventType) {
+        return redisTemplate.opsForSet().size(generateGiftSetKey(eventType));
+    }
+
+    public String generateGiftSetKey(EventType eventType) {
+        return eventType.name().toLowerCase() + GIFT_SUFFIX;
     }
 }
