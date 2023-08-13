@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -28,12 +27,12 @@ class CouponServiceTest {
 
     @BeforeEach
     public void setup() {
-        redisTemplate.delete(giftService.getGiftKeyPrefix(EventType.MBTI));
+        redisTemplate.delete(giftService.getGiftSetKey(EventType.MBTI));
     }
 
     @AfterEach
     public void tearDown() {
-        redisTemplate.delete(giftService.getGiftKeyPrefix(EventType.MBTI));
+        redisTemplate.delete(giftService.getGiftSetKey(EventType.MBTI));
     }
 
     @Test

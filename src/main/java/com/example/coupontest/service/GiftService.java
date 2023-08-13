@@ -15,29 +15,31 @@ public class GiftService {
 
     @DistributedLock(key = "#eventType.name()", waitTime = 5, leaseTime = 1)
     public void issueGiftForUser(String userId, EventType eventType, int count) {
-        if (hasReachedMaxGiftCount(eventType, count)) {
+        Long currentGiftCount = getGiftCount(eventType);
+
+        if (currentGiftCount >= count) {
             log.info("Sorry, all gifts for {} have been claimed.", eventType);
             return;
         }
-        Long added = redisTemplate.opsForSet().add(getGiftKeyPrefix(eventType), userId);
+
+        Long added = redisTemplate.opsForSet().add(getGiftSetKey(eventType), userId);
         if (Boolean.TRUE.equals(added)) {
             log.info("Gift for {} issued to user {}.", eventType, userId);
+            issueGift(userId, eventType);
         } else {
             log.info("User {} already has a gift for {}.", userId, eventType);
         }
-
     }
-
-    private boolean hasReachedMaxGiftCount(EventType eventType, int count) {
-        Long currentGiftCount = getGiftCount(eventType);
-        return currentGiftCount >= count;
+    private void issueGift(String userId, EventType eventType) {
+        // TODO: 기프티콘 전송 로직
+        log.debug("Issuing the actual gift for user {} for event type {}.", userId, eventType);
     }
 
     public Long getGiftCount(EventType eventType) {
-        return redisTemplate.opsForSet().size(getGiftKeyPrefix(eventType));
+        return redisTemplate.opsForSet().size(getGiftSetKey(eventType));
     }
 
-    public String getGiftKeyPrefix(EventType eventType) {
+    public String getGiftSetKey(EventType eventType) {
         return eventType.name().toLowerCase() + ":gift:";
     }
 }
